@@ -1,2 +1,2 @@
 # GaussianNaiveBayesClassifier
-Gaussian Naive Bayes Classifier
+Understanding Gaussian Naive Bayes Classifier from scratch
