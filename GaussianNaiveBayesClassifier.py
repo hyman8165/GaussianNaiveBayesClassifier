@@ -11,30 +11,31 @@ class NaiveBayesClassifier:
 
     self.train_size = int
     self.num_feats = int
-    self.outcomes = np.array
+    self.outcomes = list
 
   def fit(self, X, y):
     self.features = list(X.columns)
     self.train_size = X.shape[0]
     self.num_feats = X.shape[1]
-    self.outcoms = np.unique(y)
+    self.outcomes = np.unique(y)
 
     for feature in self.features:
       self.likelihoods[feature] = {}
       self.pred_priors[feature] = {}
-      for outcome in self.outcoms:
+      for outcome in self.outcomes:
         mean = np.mean(X[feature][y == outcome])
         std = np.std(X[feature][y == outcome])
         self.likelihoods[feature][outcome] = {'mean': mean, 'std': std}
-    for outcome in self.outcoms:
+    for outcome in self.outcomes:
       outcome_count = sum(y == outcome)
       self.class_priors[outcome] = outcome_count / self.train_size
 
-  def predict(self, X):
+  def predict_proba(self, X):
     results = []
     for query in np.array(X):
-      probs_outcome = {}
-      for outcome in self.outcoms:
+      probs_outcome = []
+      for ind in range(len(self.outcomes)):
+        outcome = self.outcomes[ind]
         prior = self.class_priors[outcome]
         likelihood = 1
         for feature, feat_val in zip(self.features, query):
@@ -42,10 +43,15 @@ class NaiveBayesClassifier:
           sigma = self.likelihoods[feature][outcome]['std']
           likelihood *= np.exp(-1*(feat_val-mu)**2/(2*sigma**2))/(np.sqrt(np.pi*2)*(sigma**2))
         posterior = likelihood * prior
-        probs_outcome[outcome] = posterior
-      result = max(probs_outcome, key = lambda x: probs_outcome[x])
-      results.append(result)
+        probs_outcome.append(posterior)
+      result = probs_outcome / np.sum(probs_outcome)
+      results.append(result.tolist())
     return results
+
+  def predict(self, X):
+    probs = self.predict_proba(X)
+    predicts = np.argmax(probs, axis=1)
+    return self.outcomes[predicts]
   
 mean0 = [-1.8, -9.5]
 cov0 = [[1.8**2, 0], [0, 1.8**2]]
@@ -79,8 +85,11 @@ nbc.fit(X_train, y_train)
 
 X_test = df_test.drop('y', axis=1)
 y_test = df_test['y']
+probs = nbc.predict_proba(X_test)
 yhat = nbc.predict(X_test)
 auc = np.mean(yhat==y_test)
+print(probs)
+print(yhat)
 print(auc)
 
 x_min, x_max = df['X0'].min() - 0.5, df['X0'].max() + 0.5
